@@ -1,0 +1,2209 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MomentumOS — Smart Job Hunt & Personal Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.6);
+    }
+    /* Smooth task card transitions */
+    .task-card {
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.2s ease;
+    }
+    .task-card:hover {
+      transform: translateY(-1px);
+    }
+    .task-card.dragging {
+      opacity: 0.45;
+      transform: scale(0.99);
+    }
+    @keyframes pulseSoft {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.65; }
+    }
+    .animate-pulse-soft {
+      animation: pulseSoft 2.4s infinite ease-in-out;
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.94); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop-in {
+      animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <!-- Brand Logo & Mobile Menu -->
+      <div class="flex items-center gap-3">
+        <button id="mobileSidebarBtn" class="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Open Navigation">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-sm shadow-indigo-500/30">
+            <i data-lucide="compass" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <span class="font-display font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300">MomentumOS</span>
+            <span class="hidden sm:inline-block ml-2 text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950/80 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">Career + Life</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: Battery / Cognitive Energy Selector -->
+      <div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
+        <span class="text-xs font-medium text-slate-500 dark:text-slate-400 px-2.5 flex items-center gap-1.5">
+          <i data-lucide="battery-charging" class="w-3.5 h-3.5 text-emerald-500"></i> My Energy:
+        </span>
+        <button onclick="setEnergyFilter('all')" data-energy="all" class="energy-pill px-2.5 py-1 rounded-lg text-xs font-semibold transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm">
+          Any
+        </button>
+        <button onclick="setEnergyFilter('high')" data-energy="high" class="energy-pill px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-1">
+          <span>⚡</span> Peak Brain
+        </button>
+        <button onclick="setEnergyFilter('medium')" data-energy="medium" class="energy-pill px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-1">
+          <span>🔋</span> Steady
+        </button>
+        <button onclick="setEnergyFilter('low')" data-energy="low" class="energy-pill px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-1">
+          <span>🪫</span> Autopilot
+        </button>
+      </div>
+
+      <!-- Right Actions: Roulette, Templates, Backup, Theme, Add Task -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button onclick="openRouletteModal()" title="Decision Paralysis? Let MomentumOS pick one optimal task + timer" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 transition-all">
+          <i data-lucide="dices" class="w-4 h-4 text-amber-600 dark:text-amber-400"></i>
+          <span class="hidden sm:inline">Decide For Me</span>
+        </button>
+
+        <button onclick="openTemplatesModal()" title="Reusable Workflows & Blueprints" class="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-medium bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all flex items-center gap-1.5">
+          <i data-lucide="layers" class="w-4 h-4 text-indigo-500"></i>
+          <span class="hidden lg:inline">Blueprints</span>
+        </button>
+
+        <button onclick="openBackupModal()" title="Save, Export, Import & Reuse Data" class="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-medium bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all flex items-center gap-1.5">
+          <i data-lucide="hard-drive-download" class="w-4 h-4 text-emerald-500"></i>
+          <span class="hidden lg:inline">Save & Reuse</span>
+        </button>
+
+        <button onclick="toggleTheme()" id="themeToggleBtn" title="Toggle Light / Dark Theme" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+          <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+          <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+        </button>
+
+        <button onclick="openTaskModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/25 transition-all">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>New Task</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Energy Bar -->
+    <div class="md:hidden px-4 py-2 border-t border-slate-200/60 dark:border-slate-800/80 flex items-center gap-1.5 overflow-x-auto bg-slate-50/90 dark:bg-slate-900/90">
+      <span class="text-[11px] font-semibold text-slate-500 whitespace-nowrap mr-1">Energy:</span>
+      <button onclick="setEnergyFilter('all')" data-energy="all" class="energy-pill px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap bg-white dark:bg-slate-700 shadow-sm">Any</button>
+      <button onclick="setEnergyFilter('high')" data-energy="high" class="energy-pill px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">⚡ Peak Brain</button>
+      <button onclick="setEnergyFilter('medium')" data-energy="medium" class="energy-pill px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">🔋 Steady</button>
+      <button onclick="setEnergyFilter('low')" data-energy="low" class="energy-pill px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">🪫 Autopilot</button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Layout -->
+  <div class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex gap-6 relative">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebarBackdrop" onclick="closeMobileSidebar()" class="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-40 hidden lg:hidden"></div>
+
+    <!-- Left Navigation Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 bg-white dark:bg-slate-900 lg:bg-transparent lg:dark:bg-transparent border-r lg:border-r-0 border-slate-200 dark:border-slate-800 p-5 lg:p-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out lg:static lg:w-64 shrink-0 flex flex-col gap-6 overflow-y-auto">
+      <div class="flex items-center justify-between lg:hidden">
+        <span class="font-display font-bold text-lg">Workspaces</span>
+        <button onclick="closeMobileSidebar()" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Primary Views -->
+      <div>
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3 mb-2">Command Views</div>
+        <nav class="space-y-1">
+          <button onclick="setWorkspace('all')" data-ws="all" class="ws-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all">
+            <span class="flex items-center gap-2.5"><i data-lucide="layout-grid" class="w-4 h-4 text-indigo-500"></i> All Active Tasks</span>
+            <span id="count-all" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-800">0</span>
+          </button>
+          <button onclick="setWorkspace('today')" data-ws="today" class="ws-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all">
+            <span class="flex items-center gap-2.5"><i data-lucide="flame" class="w-4 h-4 text-orange-500"></i> Today's Focus</span>
+            <span id="count-today" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-800">0</span>
+          </button>
+          <button onclick="setWorkspace('job')" data-ws="job" class="ws-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all">
+            <span class="flex items-center gap-2.5"><i data-lucide="briefcase" class="w-4 h-4 text-blue-500"></i> Job Hunting HQ</span>
+            <span id="count-job" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100/80 text-blue-700 dark:bg-blue-950 dark:text-blue-300">0</span>
+          </button>
+          <button onclick="setWorkspace('personal')" data-ws="personal" class="ws-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all">
+            <span class="flex items-center gap-2.5"><i data-lucide="sparkles" class="w-4 h-4 text-emerald-500"></i> Personal Life</span>
+            <span id="count-personal" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">0</span>
+          </button>
+          <button onclick="setWorkspace('followup')" data-ws="followup" class="ws-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all">
+            <span class="flex items-center gap-2.5"><i data-lucide="radar" class="w-4 h-4 text-rose-500"></i> Ghosting Radar</span>
+            <span id="count-followup" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">0</span>
+          </button>
+          <button onclick="setWorkspace('wins')" data-ws="wins" class="ws-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all">
+            <span class="flex items-center gap-2.5"><i data-lucide="trophy" class="w-4 h-4 text-amber-500"></i> Wins & Momentum</span>
+            <span id="count-wins" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-800 dark:bg-amber-950 dark:text-amber-300">0</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Context Batching Tags -->
+      <div>
+        <div class="flex items-center justify-between px-3 mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Batch by Context</span>
+          <button onclick="setContextFilter('all')" id="clearContextBtn" class="hidden text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Reset</button>
+        </div>
+        <div class="flex flex-wrap gap-1.5 px-2">
+          <button onclick="setContextFilter('@Computer')" data-ctx="@Computer" class="ctx-pill text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 transition-all">@Computer</button>
+          <button onclick="setContextFilter('@Deep Work')" data-ctx="@Deep Work" class="ctx-pill text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 transition-all">@Deep Work</button>
+          <button onclick="setContextFilter('@Phone/Outreach')" data-ctx="@Phone/Outreach" class="ctx-pill text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 transition-all">@Phone/Outreach</button>
+          <button onclick="setContextFilter('@Quick Win')" data-ctx="@Quick Win" class="ctx-pill text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 transition-all">@Quick Win</button>
+          <button onclick="setContextFilter('@Errands/Home')" data-ctx="@Errands/Home" class="ctx-pill text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 transition-all">@Errands/Home</button>
+        </div>
+      </div>
+
+      <!-- Mini Momentum Streak Card -->
+      <div class="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-indigo-950/60 text-white p-4 rounded-2xl border border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i> Daily Velocity
+          </span>
+          <span id="streakBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">🔥 1 Day Streak</span>
+        </div>
+        <div class="flex items-baseline gap-2 my-1">
+          <span id="completedTodayStat" class="text-2xl font-display font-bold">0</span>
+          <span class="text-xs text-slate-400">wins logged today</span>
+        </div>
+        <div class="w-full bg-slate-700/70 h-1.5 rounded-full overflow-hidden mt-2">
+          <div id="dailyGoalBar" class="bg-gradient-to-r from-indigo-400 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between text-[10px] text-slate-400 mt-1.5">
+          <span>Daily Target: 5 wins</span>
+          <span id="autoSaveStatus" class="text-emerald-400 flex items-center gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Saved locally</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Feed -->
+    <main class="flex-1 min-w-0 flex flex-col gap-5">
+
+      <!-- Ghosting / Follow-Up Radar Alert Banner (Dynamic) -->
+      <div id="ghostingAlertBanner" class="hidden bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/70 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-pop-in">
+        <div class="flex items-start sm:items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0">
+            <i data-lucide="bell-ring" class="w-5 h-5 animate-pulse-soft"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-rose-900 dark:text-rose-200">Follow-Up Radar: <span id="overdueFollowupCount">0</span> item(s) waiting for a nudge</h3>
+            <p class="text-xs text-rose-700 dark:text-rose-300/80">Applications or outreach tasks have passed their follow-up date. Don't let warm leads go cold.</p>
+          </div>
+        </div>
+        <button onclick="setWorkspace('followup')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white whitespace-nowrap self-start sm:self-auto transition-all">
+          Review & Nudge
+        </button>
+      </div>
+
+      <!-- Workspace Header & Pipeline Stats -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2.5">
+              <h1 id="workspaceTitle" class="text-xl sm:text-2xl font-display font-bold tracking-tight">All Active Tasks</h1>
+              <span id="workspaceBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">Unified View</span>
+            </div>
+            <p id="workspaceSubtitle" class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your career moves and personal life in one friction-free flow.</p>
+          </div>
+
+          <!-- Quick Add Bar -->
+          <form onsubmit="handleQuickAdd(event)" class="flex items-center gap-2 w-full md:w-auto">
+            <div class="relative flex-1 md:w-72">
+              <input type="text" id="quickAddInput" placeholder="Quick add task... (Press Enter)" class="w-full pl-3.5 pr-9 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+              <select id="quickAddDomain" title="Domain" class="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-1.5 py-1 text-slate-700 dark:text-slate-200 focus:outline-none">
+                <option value="job">💼 Job</option>
+                <option value="personal">🏡 Life</option>
+              </select>
+            </div>
+            <button type="submit" class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white transition-all" title="Quick Add">
+              <i data-lucide="corner-down-left" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Job Hunting Pipeline Strip (Shown on All, Job Hunting, or Wins) -->
+        <div id="jobPipelineStrip" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/50">
+            <div class="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center justify-between">
+              <span>Active Job Tasks</span>
+              <i data-lucide="briefcase" class="w-3.5 h-3.5 text-blue-500"></i>
+            </div>
+            <div id="statJobActive" class="text-lg font-display font-bold mt-0.5">0</div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/50">
+            <div class="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center justify-between">
+              <span>Applications Sent</span>
+              <i data-lucide="send" class="w-3.5 h-3.5 text-indigo-500"></i>
+            </div>
+            <div id="statAppsSent" class="text-lg font-display font-bold mt-0.5">0</div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/50">
+            <div class="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center justify-between">
+              <span>Interviews / Prep</span>
+              <i data-lucide="mic" class="w-3.5 h-3.5 text-purple-500"></i>
+            </div>
+            <div id="statInterviews" class="text-lg font-display font-bold mt-0.5">0</div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/50">
+            <div class="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center justify-between">
+              <span>Waiting / Follow-up</span>
+              <i data-lucide="clock" class="w-3.5 h-3.5 text-rose-500"></i>
+            </div>
+            <div id="statWaiting" class="text-lg font-display font-bold mt-0.5">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search, Category Filter & Reusable Checklist Actions -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-1">
+          <div class="relative flex-1 max-w-md">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="searchInput" oninput="renderApp()" placeholder="Search tasks, companies, notes, or tags..." class="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <select id="categoryFilter" onchange="renderApp()" class="py-2 px-3 text-xs sm:text-sm rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="all">All Categories</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2 justify-end">
+          <select id="sortSelect" onchange="renderApp()" class="py-2 px-3 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 focus:outline-none">
+            <option value="manual">Sort: Custom / Priority</option>
+            <option value="dread">Sort: Highest Dread First</option>
+            <option value="time">Sort: Shortest Time First</option>
+            <option value="due">Sort: Due Date</option>
+          </select>
+
+          <button onclick="saveCurrentAsTemplatePrompt()" title="Save currently visible tasks as a reusable template" class="px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all">
+            <i data-lucide="bookmark-plus" class="w-3.5 h-3.5 text-indigo-500"></i>
+            <span class="hidden md:inline">Save View as Template</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Wins View Toolbar (Only visible in 'wins' workspace) -->
+      <div id="winsToolbar" class="hidden bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/50 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🏆</span>
+          <div>
+            <h3 class="text-sm font-bold text-amber-900 dark:text-amber-200">Your Dopamine Vault & Reusable Wins</h3>
+            <p class="text-xs text-amber-800/80 dark:text-amber-300/80">Re-queue any completed checklist item with one click, or clear archived wins.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="requeueAllCompleted()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 transition-all">
+            ♻️ Reset & Reuse All Checked
+          </button>
+          <button onclick="clearCompletedWins()" class="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-800 transition-all">
+            Clear History
+          </button>
+        </div>
+      </div>
+
+      <!-- Task List Container -->
+      <div id="taskListContainer" class="space-y-3 pb-16">
+        <!-- Tasks injected dynamically by JS -->
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: ADD / EDIT TASK MODAL                                        -->
+  <!-- ===================================================================== -->
+  <div id="taskModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-pop-in my-auto">
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <h2 id="taskModalTitle" class="font-display font-bold text-lg">Create Smart Task</h2>
+        <button onclick="closeModal('taskModal')" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="taskForm" onsubmit="saveTaskFromModal(event)" class="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
+        <input type="hidden" id="editTaskId" />
+
+        <!-- Domain Switcher + Title -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Domain</label>
+            <select id="taskDomain" onchange="updateModalCategories()" class="w-full px-3 py-2.5 text-sm font-medium rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="job">💼 Job Hunting</option>
+              <option value="personal">🏡 Personal Life</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Task Action Title *</label>
+            <input type="text" id="taskTitle" required placeholder="e.g., Tailor resume for Senior Product Designer at Stripe" class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- Job-Specific Fields (Shown dynamically when Domain = Job) -->
+        <div id="jobFieldsGroup" class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/25 border border-blue-200/70 dark:border-blue-800/50">
+          <div>
+            <label class="block text-[11px] font-semibold text-blue-800 dark:text-blue-300 mb-1">Company / Org</label>
+            <input type="text" id="taskCompany" placeholder="e.g., Atlassian" class="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-slate-800 border border-blue-200/80 dark:border-slate-700 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-blue-800 dark:text-blue-300 mb-1">Role / Stage</label>
+            <input type="text" id="taskRole" placeholder="e.g., Frontend Eng (Round 1)" class="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-slate-800 border border-blue-200/80 dark:border-slate-700 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-blue-800 dark:text-blue-300 mb-1">Job / Portal URL</label>
+            <input type="url" id="taskUrl" placeholder="https://..." class="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-slate-800 border border-blue-200/80 dark:border-slate-700 focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- Category, Context Tag, Estimated Time -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Category</label>
+            <select id="taskCategory" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Batching Context</label>
+            <select id="taskContext" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none">
+              <option value="@Computer">@Computer</option>
+              <option value="@Deep Work">@Deep Work</option>
+              <option value="@Phone/Outreach">@Phone/Outreach</option>
+              <option value="@Quick Win">@Quick Win</option>
+              <option value="@Errands/Home">@Errands/Home</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Est. Duration (mins)</label>
+            <select id="taskMinutes" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none">
+              <option value="5">5 mins (Micro)</option>
+              <option value="15">15 mins (Sprint)</option>
+              <option value="25" selected>25 mins (1 Pomodoro)</option>
+              <option value="45">45 mins (Deep Block)</option>
+              <option value="60">60+ mins (Heavy Lift)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Cognitive Energy & Procrastination/Dread Meter -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Required Brainpower (Energy)</label>
+            <select id="taskEnergy" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none">
+              <option value="high">⚡ Peak Brainpower (Creative / Analytical)</option>
+              <option value="medium" selected>🔋 Steady Focus (Standard Execution)</option>
+              <option value="low">🪫 Autopilot / Low Energy (Easy Admin)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Procrastination / Friction Level</label>
+            <select id="taskDread" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none">
+              <option value="1">🟢 Smooth (Easy to start)</option>
+              <option value="2">🟡 Slight Friction (Needs a push)</option>
+              <option value="3">🔥 High Dread (Triggers procrastination)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Due Date, Recurring Rule, & Follow-up Radar -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Due / Target Date</label>
+            <input type="date" id="taskDueDate" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Repeat / Auto-Reset</label>
+            <select id="taskRecurring" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none">
+              <option value="none">One-off Task</option>
+              <option value="daily">Daily Habit (Auto-resets)</option>
+              <option value="weekly">Weekly Routine (Auto-resets)</option>
+              <option value="monthly">Monthly Check-in</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Follow-Up Radar Date</label>
+            <input type="date" id="taskFollowupDate" title="Set a date to be alerted if you haven't heard back" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- 2-Minute Micro-Step & Today's Focus Toggle -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">2-Minute Starter Micro-Step (Optional)</label>
+            <input type="text" id="taskMicroStep" placeholder="e.g., Open doc and write 3 bullet points only" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none" />
+          </div>
+          <label class="flex items-center gap-2.5 p-3 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/70 dark:border-orange-800/50 cursor-pointer mt-4 sm:mt-5">
+            <input type="checkbox" id="taskIsToday" class="w-4 h-4 rounded text-orange-600 focus:ring-orange-500" />
+            <span class="text-xs font-bold text-orange-900 dark:text-orange-200">🔥 Pin to Today's Focus</span>
+          </label>
+        </div>
+
+        <!-- Subtasks Checklist Builder -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Subtasks / Action Steps</label>
+          <div id="modalSubtasksList" class="space-y-1.5 mb-2"></div>
+          <div class="flex gap-2">
+            <input type="text" id="newSubtaskInput" onkeydown="if(event.key==='Enter'){event.preventDefault();addModalSubtask();}" placeholder="Add a step and press Enter..." class="flex-1 px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none" />
+            <button type="button" onclick="addModalSubtask()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-all">Add Step</button>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Context Notes / Links / Prep Thoughts</label>
+          <textarea id="taskNotes" rows="2" placeholder="Recruiter name, salary band, key talking points, or personal reminders..." class="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none"></textarea>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2.5">
+          <button type="button" onclick="closeModal('taskModal')" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">Save Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: FOCUS ROULETTE & INTEGRATED POMODORO TIMER                   -->
+  <!-- ===================================================================== -->
+  <div id="rouletteModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden animate-pop-in p-6 text-center">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 flex items-center gap-1.5">
+          <i data-lucide="dices" class="w-3.5 h-3.5"></i> Decision Paralysis Breaker
+        </span>
+        <button onclick="closeRouletteModal()" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Time Constraint Selector -->
+      <div class="mb-5">
+        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">How much time do you have right now?</label>
+        <div class="grid grid-cols-4 gap-2">
+          <button onclick="pickRouletteTask(15)" class="roulette-time-btn py-2 px-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition-all" data-mins="15">15 mins</button>
+          <button onclick="pickRouletteTask(25)" class="roulette-time-btn py-2 px-2 rounded-xl text-xs font-semibold border border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 transition-all" data-mins="25">25 mins</button>
+          <button onclick="pickRouletteTask(45)" class="roulette-time-btn py-2 px-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition-all" data-mins="45">45 mins</button>
+          <button onclick="pickRouletteTask(999)" class="roulette-time-btn py-2 px-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition-all" data-mins="999">60+ mins</button>
+        </div>
+      </div>
+
+      <!-- Chosen Task Spotlight -->
+      <div id="rouletteResultBox" class="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 mb-5 text-left">
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <span id="rouletteTaskDomain" class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">💼 Job Hunting</span>
+          <span id="rouletteTaskMeta" class="text-xs text-slate-500">25 mins • ⚡ Peak</span>
+        </div>
+        <h3 id="rouletteTaskTitle" class="font-display font-bold text-lg text-slate-900 dark:text-white leading-snug">Task Title</h3>
+        <p id="rouletteMicroStep" class="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-2 rounded-xl mt-3 border border-emerald-200/70 dark:border-emerald-800/50 hidden"></p>
+      </div>
+
+      <!-- Integrated Focus Timer -->
+      <div class="mb-6">
+        <div id="timerDisplay" class="font-display font-extrabold text-5xl tracking-tight text-slate-900 dark:text-white tabular-nums">25:00</div>
+        <p id="timerStatusText" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Single-task focus session ready</p>
+      </div>
+
+      <!-- Timer & Roulette Controls -->
+      <div class="flex flex-wrap items-center justify-center gap-2.5">
+        <button id="timerStartBtn" onclick="toggleFocusTimer()" class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/25 flex items-center gap-2 transition-all">
+          <i data-lucide="play" class="w-4 h-4"></i> Start Focus Timer
+        </button>
+        <button onclick="spinRouletteAgain()" class="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Spin Again
+        </button>
+        <button id="rouletteCompleteBtn" onclick="completeRouletteTask()" class="px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-all">
+          <i data-lucide="check" class="w-4 h-4"></i> Done!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3: REUSABLE WORKFLOW BLUEPRINTS & TEMPLATES ENGINE              -->
+  <!-- ===================================================================== -->
+  <div id="templatesModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden animate-pop-in my-auto">
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div>
+          <h2 class="font-display font-bold text-lg flex items-center gap-2">
+            <i data-lucide="layers" class="w-5 h-5 text-indigo-500"></i> Reusable Workflow Blueprints
+          </h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Deploy battle-tested job hunting & life checklists in one click, or reuse your saved workflows.</p>
+        </div>
+        <button onclick="closeModal('templatesModal')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="templatesGrid" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[75vh] overflow-y-auto">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 4: SAVE, BACKUP, EXPORT & RESTORE PORTABILITY HUB               -->
+  <!-- ===================================================================== -->
+  <div id="backupModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden animate-pop-in my-auto">
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div>
+          <h2 class="font-display font-bold text-lg flex items-center gap-2">
+            <i data-lucide="hard-drive-download" class="w-5 h-5 text-emerald-500"></i> Save, Backup & Reuse Workspace
+          </h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Your tasks auto-save in this browser, plus you can download portable backups or share checklists.</p>
+        </div>
+        <button onclick="closeModal('backupModal')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5">
+        <!-- JSON Export & Import -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 space-y-3">
+          <h3 class="text-sm font-bold flex items-center gap-2">
+            <i data-lucide="file-json" class="w-4 h-4 text-indigo-500"></i> Full Workspace Snapshot (.JSON)
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Export every task, subtask, custom template, and streak metric to a file you can store anywhere or load on another device.</p>
+          <div class="flex flex-wrap gap-2.5 pt-1">
+            <button onclick="exportJSONBackup()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 transition-all">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> Download JSON Backup
+            </button>
+            <label class="px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:border-indigo-500 cursor-pointer flex items-center gap-1.5 transition-all">
+              <i data-lucide="upload" class="w-3.5 h-3.5 text-emerald-500"></i> Import / Restore JSON
+              <input type="file" id="jsonImportInput" accept=".json" onchange="importJSONBackup(event)" class="hidden" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Markdown Export for Notes/Sharing -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 space-y-3">
+          <h3 class="text-sm font-bold flex items-center gap-2">
+            <i data-lucide="file-text" class="w-4 h-4 text-emerald-500"></i> Clean Markdown Checklist
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Copy your active Job Hunting & Personal tasks as formatted Markdown for Notion, Obsidian, or email updates.</p>
+          <div class="flex flex-wrap gap-2.5 pt-1">
+            <button onclick="copyMarkdownToClipboard()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white flex items-center gap-1.5 transition-all">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Markdown Checklist
+            </button>
+          </div>
+        </div>
+
+        <!-- Starter Data Reset -->
+        <div class="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+          <span class="text-slate-500">Want a clean slate or sample demo tasks?</span>
+          <div class="flex gap-2">
+            <button onclick="loadDemoData()" class="px-3 py-1.5 rounded-lg font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50">Load Sample Set</button>
+            <button onclick="confirmClearAllData()" class="px-3 py-1.5 rounded-lg font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50">Wipe All Tasks</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 5: CUSTOM PROMPT / CONFIRMATION DIALOG (No native alert/confirm)-->
+  <!-- ===================================================================== -->
+  <div id="customDialogModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/65 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full shadow-2xl p-6 animate-pop-in">
+      <h3 id="dialogTitle" class="font-display font-bold text-lg mb-1.5">Confirm Action</h3>
+      <p id="dialogMessage" class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mb-4">Are you sure?</p>
+      <input type="text" id="dialogInput" class="hidden w-full px-3.5 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <div class="flex justify-end gap-2">
+        <button onclick="closeModal('customDialogModal')" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
+        <button id="dialogConfirmBtn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- APPLICATION JAVASCRIPT ENGINE                                         -->
+  <!-- ===================================================================== -->
+  <script>
+    // -----------------------------------------------------------------------
+    // 1. CONSTANTS, CATEGORIES & SMART MICRO-STEP SUGGESTIONS
+    // -----------------------------------------------------------------------
+    const STORAGE_KEY = 'momentum_os_v1_data';
+
+    const CATEGORIES = {
+      job: [
+        'Applications',
+        'Networking & Outreach',
+        'Interview Prep',
+        'Resume & Portfolio',
+        'Follow-Ups',
+        'Company Research'
+      ],
+      personal: [
+        'Health & Fitness',
+        'Finance & Admin',
+        'Home & Errands',
+        'Learning & Growth',
+        'Social & Family',
+        'Life Maintenance'
+      ]
+    };
+
+    const MICRO_STEP_BANK = {
+      job: [
+        'Open the job posting and paste the URL + 3 key requirements into notes.',
+        'Set a 2-minute timer and write just the opening hook sentence of your message.',
+        'Duplicate your master resume file and rename it for this company.',
+        'Find the hiring manager or team lead on LinkedIn and open their profile.',
+        'Write down 1 bullet point answering "Why this company?" without editing.'
+      ],
+      personal: [
+        'Set a 3-minute timer and clear just one flat surface or gather the paperwork.',
+        'Open the website/app you need to log into and leave it on screen.',
+        'Put on your workout shoes or fill your water bottle—nothing else yet.',
+        'Write a 3-item bullet list of what "done" looks like for this task.',
+        'Do just the first 2 minutes—you have permission to stop after that.'
+      ]
+    };
+
+    const DEFAULT_TEMPLATES = [
+      {
+        id: 'tpl-job-sprint',
+        name: '🚀 High-Impact Job Application Sprint',
+        domain: 'job',
+        description: 'Complete end-to-end workflow to tailor, submit, and network for a target role.',
+        tasks: [
+          {
+            title: 'Analyze job description & extract top 5 keywords',
+            domain: 'job',
+            category: 'Company Research',
+            context: '@Computer',
+            energy: 'medium',
+            dread: 1,
+            minutes: 15,
+            microStep: 'Paste the job description into notes and bold 5 repeated skills.'
+          },
+          {
+            title: 'Tailor resume summary & top 3 experience bullets',
+            domain: 'job',
+            category: 'Resume & Portfolio',
+            context: '@Deep Work',
+            energy: 'high',
+            dread: 3,
+            minutes: 45,
+            microStep: 'Duplicate master resume and update just the headline & summary.'
+          },
+          {
+            title: 'Submit application & log portal link',
+            domain: 'job',
+            category: 'Applications',
+            context: '@Computer',
+            energy: 'low',
+            dread: 2,
+            minutes: 15,
+            followupDaysOffset: 7,
+            microStep: 'Open the application portal and autofill basic contact info.'
+          },
+          {
+            title: 'Send warm LinkedIn connection note to recruiter or peer',
+            domain: 'job',
+            category: 'Networking & Outreach',
+            context: '@Phone/Outreach',
+            energy: 'medium',
+            dread: 2,
+            minutes: 15,
+            followupDaysOffset: 5,
+            microStep: 'Draft a 2-sentence note mentioning a specific project of theirs.'
+          }
+        ]
+      },
+      {
+        id: 'tpl-interview-prep',
+        name: '🎙️ Interview Readiness Blueprint',
+        domain: 'job',
+        description: 'Walk into any screening or technical/behavioral interview calm and prepared.',
+        tasks: [
+          {
+            title: 'Research recent company news, product launches & competitors',
+            domain: 'job',
+            category: 'Company Research',
+            context: '@Computer',
+            energy: 'medium',
+            dread: 1,
+            minutes: 25,
+            microStep: 'Read the company blog or press page for 5 minutes.'
+          },
+          {
+            title: 'Outline 3 STAR stories (Conflict, Impact, Failure/Learning)',
+            domain: 'job',
+            category: 'Interview Prep',
+            context: '@Deep Work',
+            energy: 'high',
+            dread: 3,
+            minutes: 45,
+            microStep: 'Write just the Situation and Result for your strongest project.'
+          },
+          {
+            title: 'Prepare 4 thoughtful questions to ask the interviewer',
+            domain: 'job',
+            category: 'Interview Prep',
+            context: '@Quick Win',
+            energy: 'low',
+            dread: 1,
+            minutes: 15
+          },
+          {
+            title: 'Send thank-you & value-add follow-up email within 24h',
+            domain: 'job',
+            category: 'Follow-Ups',
+            context: '@Phone/Outreach',
+            energy: 'low',
+            dread: 1,
+            minutes: 15,
+            followupDaysOffset: 4
+          }
+        ]
+      },
+      {
+        id: 'tpl-sunday-reset',
+        name: '🌿 Weekly Life & Admin Reset',
+        domain: 'personal',
+        description: 'Clear mental clutter, organize finances, and set up an effortless week ahead.',
+        tasks: [
+          {
+            title: '15-minute inbox zero & calendar review for upcoming week',
+            domain: 'personal',
+            category: 'Life Maintenance',
+            context: '@Computer',
+            energy: 'low',
+            dread: 2,
+            minutes: 15,
+            recurring: 'weekly'
+          },
+          {
+            title: 'Review bank accounts, pay upcoming bills & check subscriptions',
+            domain: 'personal',
+            category: 'Finance & Admin',
+            context: '@Computer',
+            energy: 'medium',
+            dread: 3,
+            minutes: 25,
+            microStep: 'Log into primary banking app and check statement balance only.'
+          },
+          {
+            title: 'Plan 3 healthy meals & build grocery shopping list',
+            domain: 'personal',
+            category: 'Home & Errands',
+            context: '@Quick Win',
+            energy: 'low',
+            dread: 1,
+            minutes: 15
+          },
+          {
+            title: '20-minute tidy of desk, workspace & laundry reset',
+            domain: 'personal',
+            category: 'Home & Errands',
+            context: '@Errands/Home',
+            energy: 'low',
+            dread: 2,
+            minutes: 25
+          }
+        ]
+      }
+    ];
+
+    // -----------------------------------------------------------------------
+    // 2. APPLICATION STATE
+    // -----------------------------------------------------------------------
+    let state = {
+      tasks: [],
+      templates: [],
+      stats: {
+        streak: 1,
+        lastActiveDate: new Date().toISOString().split('T')[0],
+        completedTodayCount: 0
+      },
+      ui: {
+        workspace: 'all',      // 'all' | 'today' | 'job' | 'personal' | 'followup' | 'wins'
+        energy: 'all',         // 'all' | 'high' | 'medium' | 'low'
+        context: 'all',        // 'all' | '@Computer' | ...
+        theme: 'light'
+      }
+    };
+
+    let modalSubtasks = [];
+    let draggedTaskId = null;
+
+    // Roulette & Timer state
+    let rouletteMaxMins = 25;
+    let activeRouletteTaskId = null;
+    let timerSecondsLeft = 25 * 60;
+    let timerInterval = null;
+    let isTimerRunning = false;
+
+    // -----------------------------------------------------------------------
+    // 3. INITIALIZATION & PERSISTENCE
+    // -----------------------------------------------------------------------
+    function initApp() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          state = {
+            ...state,
+            ...parsed,
+            ui: { ...state.ui, ...(parsed.ui || {}) },
+            stats: { ...state.stats, ...(parsed.stats || {}) }
+          };
+          handleDailyRollover();
+        } catch (e) {
+          console.error('Failed to parse saved state:', e);
+          seedInitialDemoData();
+        }
+      } else {
+        seedInitialDemoData();
+      }
+
+      applyTheme(state.ui.theme);
+      populateCategoryFilterDropdown();
+      renderApp();
+      lucide.createIcons();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        const statusEl = document.getElementById('autoSaveStatus');
+        if (statusEl) {
+          statusEl.innerHTML = `<i data-lucide="check-circle-2" class="w-3 h-3"></i> Saved locally`;
+          lucide.createIcons({ root: statusEl });
+        }
+      } catch (err) {
+        showToast('Storage quota warning: export a JSON backup soon.', 'error');
+      }
+    }
+
+    function handleDailyRollover() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (state.stats.lastActiveDate !== todayStr) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        if (state.stats.lastActiveDate === yesterdayStr && state.stats.completedTodayCount > 0) {
+          state.stats.streak += 1;
+        } else if (state.stats.lastActiveDate !== todayStr) {
+          state.stats.streak = 1;
+        }
+
+        state.stats.completedTodayCount = 0;
+        state.stats.lastActiveDate = todayStr;
+
+        // Auto-reset daily recurring tasks that were completed on a prior day
+        state.tasks.forEach(t => {
+          if (t.completed && t.recurring === 'daily') {
+            t.completed = false;
+            t.completedAt = null;
+            if (t.subtasks) t.subtasks.forEach(s => s.done = false);
+          }
+        });
+        saveState();
+      }
+    }
+
+    function getRelativeDateStr(daysOffset) {
+      const d = new Date();
+      d.setDate(d.getDate() + daysOffset);
+      return d.toISOString().split('T')[0];
+    }
+
+    function seedInitialDemoData() {
+      const today = getRelativeDateStr(0);
+      const twoDaysAgo = getRelativeDateStr(-2);
+      const inThreeDays = getRelativeDateStr(3);
+
+      state.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+      state.tasks = [
+        {
+          id: 't-101',
+          title: 'Tailor portfolio case study & apply for Senior Product Engineer',
+          domain: 'job',
+          category: 'Applications',
+          company: 'Linear',
+          role: 'Senior Product Engineer',
+          url: 'https://linear.app/careers',
+          context: '@Deep Work',
+          energy: 'high',
+          dread: 3,
+          minutes: 45,
+          dueDate: today,
+          followupDate: '',
+          recurring: 'none',
+          isToday: true,
+          microStep: 'Open the Linear job post and write 3 bullet points matching your best shipped feature.',
+          notes: 'Highlight real-time sync architecture and keyboard-first UI craft.',
+          subtasks: [
+            { id: 's-1', text: 'Extract top 3 engineering values from job post', done: true },
+            { id: 's-2', text: 'Update resume top impact metrics', done: false },
+            { id: 's-3', text: 'Submit application + custom note', done: false }
+          ],
+          completed: false,
+          createdAt: Date.now() - 86400000
+        },
+        {
+          id: 't-102',
+          title: 'Follow up with Sarah Chen (Technical Recruiter) on Round 1 feedback',
+          domain: 'job',
+          category: 'Follow-Ups',
+          company: 'Stripe',
+          role: 'Frontend Systems Engineer',
+          url: '',
+          context: '@Phone/Outreach',
+          energy: 'low',
+          dread: 2,
+          minutes: 15,
+          dueDate: today,
+          followupDate: twoDaysAgo, // Triggers Ghosting Radar immediately!
+          recurring: 'none',
+          isToday: true,
+          microStep: 'Open email thread and paste your polite 3-sentence check-in draft.',
+          notes: 'Spoke last week about design systems team. Mention excitement about their recent API release.',
+          subtasks: [],
+          completed: false,
+          createdAt: Date.now() - 259200000
+        },
+        {
+          id: 't-103',
+          title: 'Practice 2 system design prompts out loud (25m timer)',
+          domain: 'job',
+          category: 'Interview Prep',
+          company: 'General Prep',
+          role: 'Staff / Senior Track',
+          url: '',
+          context: '@Deep Work',
+          energy: 'high',
+          dread: 2,
+          minutes: 25,
+          dueDate: inThreeDays,
+          followupDate: '',
+          recurring: 'weekly',
+          isToday: false,
+          microStep: 'Draw the client-API-database boxes on paper first.',
+          notes: 'Focus on trade-offs: caching invalidation & rate limiting.',
+          subtasks: [],
+          completed: false,
+          createdAt: Date.now() - 50000000
+        },
+        {
+          id: 't-104',
+          title: 'Consolidate super/retirement statements & review monthly budget',
+          domain: 'personal',
+          category: 'Finance & Admin',
+          company: '',
+          role: '',
+          url: '',
+          context: '@Computer',
+          energy: 'medium',
+          dread: 3,
+          minutes: 25,
+          dueDate: inThreeDays,
+          followupDate: '',
+          recurring: 'monthly',
+          isToday: false,
+          microStep: 'Log into your main bank portal and download last month’s CSV.',
+          notes: 'Check recurring software subscriptions to cancel unused ones.',
+          subtasks: [
+            { id: 's-4', text: 'Check high-interest savings transfer', done: false },
+            { id: 's-5', text: 'Audit unused subscriptions', done: false }
+          ],
+          completed: false,
+          createdAt: Date.now() - 40000000
+        },
+        {
+          id: 't-105',
+          title: '30-minute Zone 2 run or brisk outdoor walk (no phone)',
+          domain: 'personal',
+          category: 'Health & Fitness',
+          company: '',
+          role: '',
+          url: '',
+          context: '@Errands/Home',
+          energy: 'low',
+          dread: 1,
+          minutes: 30,
+          dueDate: today,
+          followupDate: '',
+          recurring: 'daily',
+          isToday: true,
+          microStep: 'Put on running shoes and step outside the front door.',
+          notes: 'Great mental reset between job applications.',
+          subtasks: [],
+          completed: false,
+          createdAt: Date.now() - 20000000
+        },
+        {
+          id: 't-106',
+          title: 'Submitted application & referral request to Figma',
+          domain: 'job',
+          category: 'Applications',
+          company: 'Figma',
+          role: 'Design Engineer',
+          url: '',
+          context: '@Computer',
+          energy: 'medium',
+          dread: 1,
+          minutes: 25,
+          dueDate: today,
+          followupDate: '',
+          recurring: 'none',
+          isToday: false,
+          microStep: '',
+          notes: 'Applied via employee referral link.',
+          subtasks: [],
+          completed: true,
+          completedAt: new Date().toISOString(),
+          createdAt: Date.now() - 90000000
+        }
+      ];
+      state.stats.completedTodayCount = 1;
+      saveState();
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. FILTERING, WORKSPACES & RENDERING
+    // -----------------------------------------------------------------------
+    function setWorkspace(ws) {
+      state.ui.workspace = ws;
+      closeMobileSidebar();
+      populateCategoryFilterDropdown();
+      renderApp();
+    }
+
+    function setEnergyFilter(energy) {
+      state.ui.energy = energy;
+      renderApp();
+    }
+
+    function setContextFilter(ctx) {
+      state.ui.context = state.ui.context === ctx ? 'all' : ctx;
+      renderApp();
+    }
+
+    function populateCategoryFilterDropdown() {
+      const select = document.getElementById('categoryFilter');
+      const currentVal = select.value;
+      let cats = [];
+      if (state.ui.workspace === 'job') {
+        cats = CATEGORIES.job;
+      } else if (state.ui.workspace === 'personal') {
+        cats = CATEGORIES.personal;
+      } else {
+        cats = [...CATEGORIES.job, ...CATEGORIES.personal];
+      }
+
+      select.innerHTML = `<option value="all">All Categories</option>` +
+        cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      if (cats.includes(currentVal)) {
+        select.value = currentVal;
+      }
+    }
+
+    function isFollowupOverdue(task) {
+      if (task.completed || !task.followupDate) return false;
+      const todayStr = new Date().toISOString().split('T')[0];
+      return task.followupDate <= todayStr;
+    }
+
+    function renderApp() {
+      updateNavigationStyles();
+      updateCountersAndStats();
+
+      const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+      const categoryVal = document.getElementById('categoryFilter').value;
+      const sortVal = document.getElementById('sortSelect').value;
+      const ws = state.ui.workspace;
+
+      // Show/Hide Wins Toolbar
+      document.getElementById('winsToolbar').classList.toggle('hidden', ws !== 'wins');
+
+      // Filter tasks
+      let filtered = state.tasks.filter(task => {
+        if (ws === 'wins') {
+          if (!task.completed) return false;
+        } else {
+          if (task.completed) return false;
+          if (ws === 'today' && !task.isToday) return false;
+          if (ws === 'job' && task.domain !== 'job') return false;
+          if (ws === 'personal' && task.domain !== 'personal') return false;
+          if (ws === 'followup' && !isFollowupOverdue(task)) return false;
+        }
+
+        if (state.ui.energy !== 'all' && task.energy !== state.ui.energy) return false;
+        if (state.ui.context !== 'all' && task.context !== state.ui.context) return false;
+        if (categoryVal !== 'all' && task.category !== categoryVal) return false;
+
+        if (searchQuery) {
+          const haystack = [
+            task.title,
+            task.company,
+            task.role,
+            task.category,
+            task.context,
+            task.notes,
+            task.microStep
+          ].join(' ').toLowerCase();
+          if (!haystack.includes(searchQuery)) return false;
+        }
+
+        return true;
+      });
+
+      // Sort tasks
+      if (sortVal === 'dread') {
+        filtered.sort((a, b) => (b.dread || 1) - (a.dread || 1));
+      } else if (sortVal === 'time') {
+        filtered.sort((a, b) => (a.minutes || 25) - (b.minutes || 25));
+      } else if (sortVal === 'due') {
+        filtered.sort((a, b) => (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31'));
+      } else if (ws === 'wins') {
+        filtered.sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+      }
+
+      const container = document.getElementById('taskListContainer');
+
+      if (filtered.length === 0) {
+        container.innerHTML = renderEmptyState(ws);
+        lucide.createIcons({ root: container });
+        return;
+      }
+
+      container.innerHTML = filtered.map(task => renderTaskCard(task)).join('');
+      lucide.createIcons({ root: container });
+    }
+
+    function updateNavigationStyles() {
+      const ws = state.ui.workspace;
+      const titles = {
+        all: ['All Active Tasks', 'Unified View', 'Manage your career moves and personal life in one friction-free flow.'],
+        today: ["Today's Focus", 'High Priority', 'Your curated short-list for maximum momentum today.'],
+        job: ['Job Hunting Command Center', 'Career Pipeline', 'Track applications, outreach, interviews, and follow-ups without dropping leads.'],
+        personal: ['Personal Life & Admin', 'Life OS', 'Keep health, finances, home errands, and personal growth effortless.'],
+        followup: ['Ghosting & Follow-Up Radar', 'Action Needed', 'Warm leads and applications overdue for a polite nudge.'],
+        wins: ['Wins & Momentum Vault', 'Completed Log', 'Every completed action builds proof of progress. Reuse any task anytime.']
+      };
+
+      const [title, badge, sub] = titles[ws] || titles.all;
+      document.getElementById('workspaceTitle').textContent = title;
+      document.getElementById('workspaceBadge').textContent = badge;
+      document.getElementById('workspaceSubtitle').textContent = sub;
+
+      // Pipeline strip visibility
+      const showPipeline = ['all', 'job', 'followup', 'wins'].includes(ws);
+      document.getElementById('jobPipelineStrip').classList.toggle('hidden', !showPipeline);
+
+      // Sync quick add domain default
+      if (ws === 'job' || ws === 'personal') {
+        document.getElementById('quickAddDomain').value = ws;
+      }
+
+      // Sidebar active button styling
+      document.querySelectorAll('.ws-btn').forEach(btn => {
+        const isActive = btn.dataset.ws === ws;
+        btn.className = isActive
+          ? 'ws-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 transition-all'
+          : 'ws-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-all';
+      });
+
+      // Energy pills styling
+      document.querySelectorAll('.energy-pill').forEach(btn => {
+        const isActive = btn.dataset.energy === state.ui.energy;
+        btn.className = isActive
+          ? 'energy-pill px-2.5 py-1 rounded-lg text-xs font-semibold transition-all bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-xs whitespace-nowrap'
+          : 'energy-pill px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all whitespace-nowrap';
+      });
+
+      // Context pills styling
+      document.querySelectorAll('.ctx-pill').forEach(btn => {
+        const isActive = btn.dataset.ctx === state.ui.context;
+        btn.className = isActive
+          ? 'ctx-pill text-xs px-2.5 py-1.5 rounded-lg border border-indigo-500 bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-semibold transition-all'
+          : 'ctx-pill text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-indigo-400 transition-all';
+      });
+      document.getElementById('clearContextBtn').classList.toggle('hidden', state.ui.context === 'all');
+    }
+
+    function updateCountersAndStats() {
+      const activeTasks = state.tasks.filter(t => !t.completed);
+      const completedTasks = state.tasks.filter(t => t.completed);
+      const overdueFollowups = activeTasks.filter(isFollowupOverdue);
+
+      document.getElementById('count-all').textContent = activeTasks.length;
+      document.getElementById('count-today').textContent = activeTasks.filter(t => t.isToday).length;
+      document.getElementById('count-job').textContent = activeTasks.filter(t => t.domain === 'job').length;
+      document.getElementById('count-personal').textContent = activeTasks.filter(t => t.domain === 'personal').length;
+      document.getElementById('count-followup').textContent = overdueFollowups.length;
+      document.getElementById('count-wins').textContent = completedTasks.length;
+
+      // Ghosting Radar banner
+      const banner = document.getElementById('ghostingAlertBanner');
+      if (overdueFollowups.length > 0 && state.ui.workspace !== 'followup') {
+        document.getElementById('overdueFollowupCount').textContent = overdueFollowups.length;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+
+      // Job pipeline stats
+      const allJobTasks = state.tasks.filter(t => t.domain === 'job');
+      document.getElementById('statJobActive').textContent = activeTasks.filter(t => t.domain === 'job').length;
+      document.getElementById('statAppsSent').textContent = allJobTasks.filter(t => t.category === 'Applications' && t.completed).length;
+      document.getElementById('statInterviews').textContent = allJobTasks.filter(t => t.category === 'Interview Prep').length;
+      document.getElementById('statWaiting').textContent = activeTasks.filter(t => t.domain === 'job' && t.followupDate).length;
+
+      // Streak & daily velocity
+      document.getElementById('streakBadge').textContent = `🔥 ${state.stats.streak} Day Streak`;
+      document.getElementById('completedTodayStat').textContent = state.stats.completedTodayCount;
+      const pct = Math.min(100, Math.round((state.stats.completedTodayCount / 5) * 100));
+      document.getElementById('dailyGoalBar').style.width = `${pct}%`;
+    }
+
+    function renderTaskCard(task) {
+      const isJob = task.domain === 'job';
+      const domainBadge = isJob
+        ? `<span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/50">💼 ${escapeHtml(task.category)}</span>`
+        : `<span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50">🏡 ${escapeHtml(task.category)}</span>`;
+
+      const energyMap = {
+        high: { icon: '⚡', label: 'Peak Brain', cls: 'text-amber-700 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300' },
+        medium: { icon: '🔋', label: 'Steady', cls: 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300' },
+        low: { icon: '🪫', label: 'Autopilot', cls: 'text-teal-700 bg-teal-50 dark:bg-teal-950/60 dark:text-teal-300' }
+      };
+      const en = energyMap[task.energy || 'medium'];
+
+      const dreadBadge = task.dread >= 3
+        ? `<span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-orange-100/80 text-orange-800 dark:bg-orange-950/70 dark:text-orange-300" title="High procrastination friction">🔥 High Friction</span>`
+        : '';
+
+      const overdue = isFollowupOverdue(task);
+      const followupBadge = task.followupDate
+        ? `<span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md ${overdue ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}">
+            <i data-lucide="radar" class="w-3 h-3"></i> ${overdue ? 'Nudge Due:' : 'Follow-up:'} ${task.followupDate}
+           </span>`
+        : '';
+
+      const recurringBadge = task.recurring && task.recurring !== 'none'
+        ? `<span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300"><i data-lucide="repeat" class="w-3 h-3"></i> ${task.recurring}</span>`
+        : '';
+
+      const companyInfo = (isJob && (task.company || task.role))
+        ? `<div class="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300 mt-1">
+            ${task.company ? `<span class="inline-flex items-center gap-1 text-slate-800 dark:text-slate-100 font-semibold"><i data-lucide="building-2" class="w-3.5 h-3.5 text-blue-500"></i> ${escapeHtml(task.company)}</span>` : ''}
+            ${task.role ? `<span class="text-slate-400">•</span><span>${escapeHtml(task.role)}</span>` : ''}
+            ${task.url ? `<a href="${escapeHtml(task.url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline"><i data-lucide="external-link" class="w-3 h-3"></i> Portal</a>` : ''}
+          </div>`
+        : '';
+
+      const microStepBlock = task.microStep
+        ? `<div class="mt-2.5 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/40 text-xs text-emerald-900 dark:text-emerald-200">
+            <span class="flex items-center gap-1.5"><span class="font-bold">⚡ 2-Min Starter:</span> ${escapeHtml(task.microStep)}</span>
+            ${!task.completed ? `<button onclick="launchSingleTaskTimer('${task.id}')" class="shrink-0 text-[11px] font-bold px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all">Start 2m</button>` : ''}
+          </div>`
+        : '';
+
+      const subtasksHtml = (task.subtasks && task.subtasks.length > 0)
+        ? `<div class="mt-2.5 space-y-1 pl-1">
+            ${task.subtasks.map(st => `
+              <label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer hover:text-slate-900 dark:hover:text-white">
+                <input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${task.id}', '${st.id}')" class="rounded text-indigo-600 focus:ring-indigo-500" />
+                <span class="${st.done ? 'line-through text-slate-400' : ''}">${escapeHtml(st.text)}</span>
+              </label>
+            `).join('')}
+          </div>`
+        : '';
+
+      return `
+        <div draggable="true"
+             ondragstart="handleDragStart(event, '${task.id}')"
+             ondragover="handleDragOver(event)"
+             ondrop="handleDrop(event, '${task.id}')"
+             ondragend="handleDragEnd(event)"
+             class="task-card group bg-white dark:bg-slate-900 border ${overdue ? 'border-rose-300 dark:border-rose-800/80' : 'border-slate-200/85 dark:border-slate-800'} rounded-2xl p-4 shadow-2xs hover:shadow-md">
+          <div class="flex items-start gap-3.5">
+            <!-- Completion Checkbox -->
+            <button onclick="toggleTaskComplete('${task.id}')" aria-label="Toggle complete"
+              class="mt-0.5 w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-slate-600 hover:border-indigo-500'}">
+              ${task.completed ? '<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>' : ''}
+            </button>
+
+            <!-- Main Task Body -->
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+                ${domainBadge}
+                <span class="text-[11px] font-medium px-2 py-0.5 rounded-md ${en.cls}">${en.icon} ${en.label}</span>
+                <span class="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">${escapeHtml(task.context || '@Computer')}</span>
+                <span class="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">⏱ ${task.minutes || 25}m</span>
+                ${dreadBadge}
+                ${followupBadge}
+                ${recurringBadge}
+                ${task.dueDate ? `<span class="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> ${task.dueDate}</span>` : ''}
+              </div>
+
+              <h3 class="text-sm sm:text-base font-semibold leading-snug ${task.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}">
+                ${escapeHtml(task.title)}
+              </h3>
+
+              ${companyInfo}
+
+              ${task.notes ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-2">${escapeHtml(task.notes)}</p>` : ''}
+
+              ${microStepBlock}
+              ${subtasksHtml}
+
+              <!-- Contextual Action Bar (Follow-up Nudge & Shrink It) -->
+              ${!task.completed ? `
+                <div class="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+                  <button onclick="launchSingleTaskTimer('${task.id}')" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:hover:bg-indigo-900/70 dark:text-indigo-300 transition-all">
+                    <i data-lucide="play" class="w-3 h-3"></i> Focus Timer
+                  </button>
+
+                  ${!task.microStep ? `
+                    <button onclick="generateMicroStep('${task.id}')" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:text-emerald-300 transition-all" title="Break procrastination by generating an effortless 2-minute starter step">
+                      <i data-lucide="wand-2" class="w-3 h-3"></i> Shrink It (2m Step)
+                    </button>
+                  ` : ''}
+
+                  ${task.followupDate ? `
+                    <button onclick="logFollowupAndReset('${task.id}')" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 dark:text-rose-300 transition-all">
+                      <i data-lucide="send" class="w-3 h-3"></i> Log Nudge (+5d Radar)
+                    </button>
+                  ` : ''}
+                </div>
+              ` : `
+                <div class="flex items-center gap-2 mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                  <button onclick="toggleTaskComplete('${task.id}')" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 transition-all">
+                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Re-queue / Reuse Task
+                  </button>
+                </div>
+              `}
+            </div>
+
+            <!-- Right Quick Controls: Pin Today, Edit, Delete -->
+            <div class="flex items-center gap-1 shrink-0">
+              ${!task.completed ? `
+                <button onclick="toggleTodayPin('${task.id}')" title="${task.isToday ? 'Unpin from Today' : 'Pin to Today\'s Focus'}" class="p-1.5 rounded-lg transition-all ${task.isToday ? 'text-orange-500 bg-orange-50 dark:bg-orange-950/50' : 'text-slate-400 hover:text-orange-500 hover:bg-slate-100 dark:hover:bg-slate-800'}">
+                  <i data-lucide="flame" class="w-4 h-4"></i>
+                </button>
+              ` : ''}
+              <button onclick="openTaskModal('${task.id}')" title="Edit Task" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button onclick="deleteTask('${task.id}')" title="Delete Task" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEmptyState(ws) {
+      const messages = {
+        followup: ['Zero Ghosted Leads!', 'No applications or outreach messages are currently overdue for a follow-up.', 'check-circle'],
+        wins: ['Your Wins Vault Awaits', 'Complete any task to build your daily streak and momentum log.', 'trophy'],
+        today: ['Clear Runway for Today', 'Pin your top 3 priorities with the flame icon or spin "Decide For Me".', 'flame']
+      };
+      const [title, desc, icon] = messages[ws] || ['No Matching Tasks Found', 'Add a new task above, adjust your energy filter, or deploy a reusable workflow blueprint.', 'sparkles'];
+
+      return `
+        <div class="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 text-center">
+          <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-3">
+            <i data-lucide="${icon}" class="w-6 h-6"></i>
+          </div>
+          <h3 class="font-display font-bold text-base text-slate-900 dark:text-white">${title}</h3>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1 mb-4">${desc}</p>
+          <div class="flex flex-wrap items-center justify-center gap-2">
+            <button onclick="openTaskModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all">+ Add Task</button>
+            <button onclick="openTemplatesModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all">Browse Blueprints</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. TASK CRUD & SMART INTERACTIONS
+    // -----------------------------------------------------------------------
+    function handleQuickAdd(e) {
+      e.preventDefault();
+      const input = document.getElementById('quickAddInput');
+      const title = input.value.trim();
+      if (!title) return;
+
+      const domain = document.getElementById('quickAddDomain').value;
+      const newTask = {
+        id: 't-' + Date.now(),
+        title,
+        domain,
+        category: CATEGORIES[domain][0],
+        company: '',
+        role: '',
+        url: '',
+        context: '@Computer',
+        energy: state.ui.energy !== 'all' ? state.ui.energy : 'medium',
+        dread: 1,
+        minutes: 25,
+        dueDate: state.ui.workspace === 'today' ? getRelativeDateStr(0) : '',
+        followupDate: '',
+        recurring: 'none',
+        isToday: state.ui.workspace === 'today',
+        microStep: '',
+        notes: '',
+        subtasks: [],
+        completed: false,
+        createdAt: Date.now()
+      };
+
+      state.tasks.unshift(newTask);
+      input.value = '';
+      saveState();
+      renderApp();
+      showToast(`Added to ${domain === 'job' ? 'Job Hunting' : 'Personal'}`);
+    }
+
+    function toggleTaskComplete(id) {
+      const task = state.tasks.find(t => t.id === id);
+      if (!task) return;
+
+      task.completed = !task.completed;
+      if (task.completed) {
+        task.completedAt = new Date().toISOString();
+        state.stats.completedTodayCount += 1;
+        showToast(`🎉 Win logged! "${task.title.slice(0, 34)}..."`);
+      } else {
+        task.completedAt = null;
+        if (state.stats.completedTodayCount > 0) state.stats.completedTodayCount -= 1;
+        showToast('Task re-queued to active list');
+      }
+      saveState();
+      renderApp();
+    }
+
+    function toggleSubtask(taskId, subtaskId) {
+      const task = state.tasks.find(t => t.id === taskId);
+      if (!task || !task.subtasks) return;
+      const st = task.subtasks.find(s => s.id === subtaskId);
+      if (st) {
+        st.done = !st.done;
+        saveState();
+        renderApp();
+      }
+    }
+
+    function toggleTodayPin(id) {
+      const task = state.tasks.find(t => t.id === id);
+      if (!task) return;
+      task.isToday = !task.isToday;
+      saveState();
+      renderApp();
+      showToast(task.isToday ? "Pinned to Today's Focus 🔥" : "Removed from Today's Focus");
+    }
+
+    function deleteTask(id) {
+      state.tasks = state.tasks.filter(t => t.id !== id);
+      saveState();
+      renderApp();
+      showToast('Task removed');
+    }
+
+    function generateMicroStep(id) {
+      const task = state.tasks.find(t => t.id === id);
+      if (!task) return;
+      const pool = MICRO_STEP_BANK[task.domain] || MICRO_STEP_BANK.personal;
+      const suggestion = pool[Math.floor(Math.random() * pool.length)];
+      task.microStep = suggestion;
+      saveState();
+      renderApp();
+      showToast('⚡ 2-Minute Starter generated! Just do that tiny first step.');
+    }
+
+    function logFollowupAndReset(id) {
+      const task = state.tasks.find(t => t.id === id);
+      if (!task) return;
+      const todayStr = getRelativeDateStr(0);
+      task.followupDate = getRelativeDateStr(5);
+      task.notes = `[Nudged on ${todayStr}] ` + (task.notes || '');
+      saveState();
+      renderApp();
+      showToast('Follow-up logged! Radar reset for +5 days.');
+    }
+
+    function requeueAllCompleted() {
+      let count = 0;
+      state.tasks.forEach(t => {
+        if (t.completed) {
+          t.completed = false;
+          t.completedAt = null;
+          if (t.subtasks) t.subtasks.forEach(s => s.done = false);
+          count++;
+        }
+      });
+      saveState();
+      setWorkspace('all');
+      showToast(`♻️ Reset & re-queued ${count} tasks for reuse!`);
+    }
+
+    function clearCompletedWins() {
+      state.tasks = state.tasks.filter(t => !t.completed);
+      saveState();
+      renderApp();
+      showToast('Completed history cleared');
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. TASK ADD/EDIT MODAL LOGIC
+    // -----------------------------------------------------------------------
+    function openTaskModal(taskId = null) {
+      const modal = document.getElementById('taskModal');
+      const form = document.getElementById('taskForm');
+      form.reset();
+      modalSubtasks = [];
+
+      if (taskId) {
+        const t = state.tasks.find(item => item.id === taskId);
+        if (!t) return;
+        document.getElementById('taskModalTitle').textContent = 'Edit Smart Task';
+        document.getElementById('editTaskId').value = t.id;
+        document.getElementById('taskDomain').value = t.domain;
+        updateModalCategories();
+        document.getElementById('taskTitle').value = t.title;
+        document.getElementById('taskCompany').value = t.company || '';
+        document.getElementById('taskRole').value = t.role || '';
+        document.getElementById('taskUrl').value = t.url || '';
+        document.getElementById('taskCategory').value = t.category;
+        document.getElementById('taskContext').value = t.context || '@Computer';
+        document.getElementById('taskMinutes').value = String(t.minutes || 25);
+        document.getElementById('taskEnergy').value = t.energy || 'medium';
+        document.getElementById('taskDread').value = String(t.dread || 1);
+        document.getElementById('taskDueDate').value = t.dueDate || '';
+        document.getElementById('taskRecurring').value = t.recurring || 'none';
+        document.getElementById('taskFollowupDate').value = t.followupDate || '';
+        document.getElementById('taskMicroStep').value = t.microStep || '';
+        document.getElementById('taskIsToday').checked = !!t.isToday;
+        document.getElementById('taskNotes').value = t.notes || '';
+        modalSubtasks = t.subtasks ? JSON.parse(JSON.stringify(t.subtasks)) : [];
+      } else {
+        document.getElementById('taskModalTitle').textContent = 'Create Smart Task';
+        document.getElementById('editTaskId').value = '';
+        const defaultDomain = state.ui.workspace === 'personal' ? 'personal' : 'job';
+        document.getElementById('taskDomain').value = defaultDomain;
+        updateModalCategories();
+        document.getElementById('taskIsToday').checked = state.ui.workspace === 'today';
+      }
+
+      renderModalSubtasks();
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function updateModalCategories() {
+      const domain = document.getElementById('taskDomain').value;
+      const catSelect = document.getElementById('taskCategory');
+      catSelect.innerHTML = CATEGORIES[domain].map(c => `<option value="${c}">${c}</option>`).join('');
+      document.getElementById('jobFieldsGroup').classList.toggle('hidden', domain !== 'job');
+    }
+
+    function addModalSubtask() {
+      const input = document.getElementById('newSubtaskInput');
+      const text = input.value.trim();
+      if (!text) return;
+      modalSubtasks.push({ id: 'sub-' + Date.now() + Math.random(), text, done: false });
+      input.value = '';
+      renderModalSubtasks();
+    }
+
+    function removeModalSubtask(idx) {
+      modalSubtasks.splice(idx, 1);
+      renderModalSubtasks();
+    }
+
+    function renderModalSubtasks() {
+      const list = document.getElementById('modalSubtasksList');
+      list.innerHTML = modalSubtasks.map((st, idx) => `
+        <div class="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs">
+          <span>${escapeHtml(st.text)}</span>
+          <button type="button" onclick="removeModalSubtask(${idx})" class="text-slate-400 hover:text-rose-500"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+        </div>
+      `).join('');
+      lucide.createIcons({ root: list });
+    }
+
+    function saveTaskFromModal(e) {
+      e.preventDefault();
+      const editId = document.getElementById('editTaskId').value;
+      const domain = document.getElementById('taskDomain').value;
+
+      const taskData = {
+        title: document.getElementById('taskTitle').value.trim(),
+        domain,
+        company: domain === 'job' ? document.getElementById('taskCompany').value.trim() : '',
+        role: domain === 'job' ? document.getElementById('taskRole').value.trim() : '',
+        url: domain === 'job' ? document.getElementById('taskUrl').value.trim() : '',
+        category: document.getElementById('taskCategory').value,
+        context: document.getElementById('taskContext').value,
+        minutes: parseInt(document.getElementById('taskMinutes').value, 10) || 25,
+        energy: document.getElementById('taskEnergy').value,
+        dread: parseInt(document.getElementById('taskDread').value, 10) || 1,
+        dueDate: document.getElementById('taskDueDate').value,
+        recurring: document.getElementById('taskRecurring').value,
+        followupDate: document.getElementById('taskFollowupDate').value,
+        microStep: document.getElementById('taskMicroStep').value.trim(),
+        isToday: document.getElementById('taskIsToday').checked,
+        notes: document.getElementById('taskNotes').value.trim(),
+        subtasks: modalSubtasks
+      };
+
+      if (editId) {
+        const idx = state.tasks.findIndex(t => t.id === editId);
+        if (idx !== -1) {
+          state.tasks[idx] = { ...state.tasks[idx], ...taskData };
+        }
+        showToast('Task updated');
+      } else {
+        state.tasks.unshift({
+          id: 't-' + Date.now(),
+          ...taskData,
+          completed: false,
+          createdAt: Date.now()
+        });
+        showToast('Smart task created');
+      }
+
+      saveState();
+      closeModal('taskModal');
+      renderApp();
+    }
+
+    // -----------------------------------------------------------------------
+    // 7. FOCUS ROULETTE & INTEGRATED POMODORO TIMER
+    // -----------------------------------------------------------------------
+    function openRouletteModal() {
+      const active = state.tasks.filter(t => !t.completed);
+      if (active.length === 0) {
+        showToast('No active tasks left! Add one or deploy a blueprint.', 'info');
+        return;
+      }
+      pickRouletteTask(rouletteMaxMins);
+      const modal = document.getElementById('rouletteModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons({ root: modal });
+    }
+
+    function launchSingleTaskTimer(taskId) {
+      const task = state.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      stopFocusTimer();
+      activeRouletteTaskId = task.id;
+      displayTaskInRoulette(task, task.minutes || 25);
+      const modal = document.getElementById('rouletteModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons({ root: modal });
+    }
+
+    function pickRouletteTask(maxMins) {
+      stopFocusTimer();
+      rouletteMaxMins = maxMins;
+
+      document.querySelectorAll('.roulette-time-btn').forEach(btn => {
+        const isSelected = parseInt(btn.dataset.mins, 10) === maxMins;
+        btn.className = isSelected
+          ? 'roulette-time-btn py-2 px-2 rounded-xl text-xs font-semibold border border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 transition-all'
+          : 'roulette-time-btn py-2 px-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition-all';
+      });
+
+      let candidates = state.tasks.filter(t => !t.completed && (t.minutes || 25) <= maxMins);
+      if (state.ui.energy !== 'all') {
+        const energyMatched = candidates.filter(t => t.energy === state.ui.energy);
+        if (energyMatched.length > 0) candidates = energyMatched;
+      }
+      if (candidates.length === 0) {
+        candidates = state.tasks.filter(t => !t.completed);
+      }
+
+      // Avoid picking the exact same task twice if multiple options exist
+      if (candidates.length > 1 && activeRouletteTaskId) {
+        candidates = candidates.filter(t => t.id !== activeRouletteTaskId);
+      }
+
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+      activeRouletteTaskId = chosen.id;
+      const sessionMins = Math.min(maxMins === 999 ? 45 : maxMins, chosen.minutes || 25);
+      displayTaskInRoulette(chosen, sessionMins);
+    }
+
+    function spinRouletteAgain() {
+      pickRouletteTask(rouletteMaxMins);
+    }
+
+    function displayTaskInRoulette(task, sessionMins) {
+      document.getElementById('rouletteTaskDomain').textContent = task.domain === 'job' ? `💼 ${task.category}` : `🏡 ${task.category}`;
+      document.getElementById('rouletteTaskMeta').textContent = `${task.minutes || 25}m est • ${task.context || '@Computer'}`;
+      document.getElementById('rouletteTaskTitle').textContent = task.title;
+
+      const microEl = document.getElementById('rouletteMicroStep');
+      if (task.microStep) {
+        microEl.textContent = `⚡ 2-Min Starter: ${task.microStep}`;
+        microEl.classList.remove('hidden');
+      } else {
+        microEl.classList.add('hidden');
+      }
+
+      timerSecondsLeft = sessionMins * 60;
+      updateTimerDisplay();
+      document.getElementById('timerStatusText').textContent = 'Single-task focus session ready';
+    }
+
+    function toggleFocusTimer() {
+      const btn = document.getElementById('timerStartBtn');
+      if (isTimerRunning) {
+        stopFocusTimer();
+        document.getElementById('timerStatusText').textContent = 'Timer paused';
+      } else {
+        isTimerRunning = true;
+        btn.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i> Pause Timer`;
+        document.getElementById('timerStatusText').textContent = 'Deep focus in progress — ignore everything else';
+        lucide.createIcons({ root: btn });
+
+        timerInterval = setInterval(() => {
+          if (timerSecondsLeft > 0) {
+            timerSecondsLeft--;
+            updateTimerDisplay();
+          } else {
+            stopFocusTimer();
+            document.getElementById('timerStatusText').textContent = '🎉 Focus sprint complete!';
+            showToast('⏰ Focus timer finished! Mark your task done or take a 5-min breather.');
+          }
+        }, 1000);
+      }
+    }
+
+    function stopFocusTimer() {
+      isTimerRunning = false;
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+      const btn = document.getElementById('timerStartBtn');
+      if (btn) {
+        btn.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> Start Focus Timer`;
+        lucide.createIcons({ root: btn });
+      }
+    }
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(timerSecondsLeft / 60);
+      const secs = timerSecondsLeft % 60;
+      document.getElementById('timerDisplay').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function completeRouletteTask() {
+      if (activeRouletteTaskId) {
+        toggleTaskComplete(activeRouletteTaskId);
+      }
+      closeRouletteModal();
+    }
+
+    function closeRouletteModal() {
+      stopFocusTimer();
+      closeModal('rouletteModal');
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. REUSABLE WORKFLOW BLUEPRINTS & TEMPLATES
+    // -----------------------------------------------------------------------
+    function openTemplatesModal() {
+      renderTemplatesGrid();
+      const modal = document.getElementById('templatesModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons({ root: modal });
+    }
+
+    function renderTemplatesGrid() {
+      const grid = document.getElementById('templatesGrid');
+      grid.innerHTML = state.templates.map(tpl => `
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-3">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${tpl.domain === 'job' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'}">
+                ${tpl.domain === 'job' ? '💼 Career' : '🏡 Personal'} • ${tpl.tasks.length} steps
+              </span>
+              ${!tpl.id.startsWith('tpl-') ? `<button onclick="deleteTemplate('${tpl.id}')" class="text-slate-400 hover:text-rose-500" title="Delete custom template"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+            </div>
+            <h3 class="font-display font-bold text-sm text-slate-900 dark:text-white mt-1">${escapeHtml(tpl.name)}</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${escapeHtml(tpl.description || 'Custom saved checklist blueprint.')}</p>
+            <ul class="mt-2.5 space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+              ${tpl.tasks.slice(0, 3).map(t => `<li class="truncate">• ${escapeHtml(t.title)}</li>`).join('')}
+              ${tpl.tasks.length > 3 ? `<li class="text-slate-400">+ ${tpl.tasks.length - 3} more tasks...</li>` : ''}
+            </ul>
+          </div>
+          <button onclick="deployTemplate('${tpl.id}')" class="w-full py-2 px-3 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center justify-center gap-1.5">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Deploy Checklist to Workspace
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function deployTemplate(tplId) {
+      const tpl = state.templates.find(t => t.id === tplId);
+      if (!tpl) return;
+
+      const created = tpl.tasks.map((item, index) => ({
+        id: 't-' + Date.now() + '-' + index,
+        title: item.title,
+        domain: item.domain || tpl.domain || 'job',
+        category: item.category || CATEGORIES[tpl.domain || 'job'][0],
+        company: '',
+        role: '',
+        url: '',
+        context: item.context || '@Computer',
+        energy: item.energy || 'medium',
+        dread: item.dread || 1,
+        minutes: item.minutes || 25,
+        dueDate: '',
+        followupDate: item.followupDaysOffset ? getRelativeDateStr(item.followupDaysOffset) : '',
+        recurring: item.recurring || 'none',
+        isToday: index === 0, // Pin first starter task to Today
+        microStep: item.microStep || '',
+        notes: item.notes || '',
+        subtasks: [],
+        completed: false,
+        createdAt: Date.now() + index
+      }));
+
+      state.tasks = [...created, ...state.tasks];
+      saveState();
+      closeModal('templatesModal');
+      renderApp();
+      showToast(`Deployed "${tpl.name}" (${created.length} tasks added)!`);
+    }
+
+    function saveCurrentAsTemplatePrompt() {
+      const active = state.tasks.filter(t => !t.completed);
+      if (active.length === 0) {
+        showToast('No active tasks to save as a template yet.');
+        return;
+      }
+      openCustomDialog({
+        title: 'Save Current Tasks as Reusable Blueprint',
+        message: `Save your ${active.length} currently active tasks as a 1-click reusable workflow template.`,
+        showInput: true,
+        placeholder: 'e.g., My Weekly Job Hunt Routine',
+        onConfirm: (name) => {
+          if (!name.trim()) return;
+          const newTpl = {
+            id: 'custom-tpl-' + Date.now(),
+            name: '📌 ' + name.trim(),
+            domain: state.ui.workspace === 'personal' ? 'personal' : 'job',
+            description: `Custom saved blueprint with ${active.length} tasks.`,
+            tasks: active.map(t => ({
+              title: t.title,
+              domain: t.domain,
+              category: t.category,
+              context: t.context,
+              energy: t.energy,
+              dread: t.dread,
+              minutes: t.minutes,
+              recurring: t.recurring,
+              microStep: t.microStep,
+              notes: t.notes
+            }))
+          };
+          state.templates.unshift(newTpl);
+          saveState();
+          showToast('Saved as reusable blueprint in Blueprints!');
+        }
+      });
+    }
+
+    function deleteTemplate(id) {
+      state.templates = state.templates.filter(t => t.id !== id);
+      saveState();
+      renderTemplatesGrid();
+      lucide.createIcons({ root: document.getElementById('templatesGrid') });
+    }
+
+    // -----------------------------------------------------------------------
+    // 9. SAVE, BACKUP, EXPORT & IMPORT PORTABILITY
+    // -----------------------------------------------------------------------
+    function openBackupModal() {
+      const modal = document.getElementById('backupModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons({ root: modal });
+    }
+
+    function exportJSONBackup() {
+      const dataStr = JSON.stringify(state, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStamp = new Date().toISOString().split('T')[0];
+      a.href = url;
+      a.download = `MomentumOS-Backup-${dateStamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Full workspace JSON backup downloaded!');
+    }
+
+    function importJSONBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!imported || !Array.isArray(imported.tasks)) {
+            throw new Error('Invalid MomentumOS backup file');
+          }
+          state.tasks = imported.tasks;
+          if (Array.isArray(imported.templates)) state.templates = imported.templates;
+          if (imported.stats) state.stats = { ...state.stats, ...imported.stats };
+          saveState();
+          closeModal('backupModal');
+          renderApp();
+          showToast(`Restored ${state.tasks.length} tasks from backup!`);
+        } catch (err) {
+          showToast('Could not read backup file. Ensure it is a valid MomentumOS .json file.', 'error');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function copyMarkdownToClipboard() {
+      const jobTasks = state.tasks.filter(t => t.domain === 'job');
+      const personalTasks = state.tasks.filter(t => t.domain === 'personal');
+
+      const formatList = (list) => list.length
+        ? list.map(t => `- [${t.completed ? 'x' : ' '}] **${t.title}** (${t.category}${t.company ? ' @ ' + t.company : ''})`).join('\n')
+        : '_No tasks_';
+
+      const md = `# MomentumOS Action List (${new Date().toLocaleDateString()})\n\n## 💼 Job Hunting\n${formatList(jobTasks)}\n\n## 🏡 Personal Life\n${formatList(personalTasks)}`;
+
+      const textarea = document.createElement('textarea');
+      textarea.value = md;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      showToast('Markdown checklist copied to clipboard!');
+    }
+
+    function loadDemoData() {
+      seedInitialDemoData();
+      closeModal('backupModal');
+      renderApp();
+      showToast('Sample Job Hunting & Personal tasks loaded!');
+    }
+
+    function confirmClearAllData() {
+      closeModal('backupModal');
+      openCustomDialog({
+        title: 'Wipe All Tasks?',
+        message: 'This will clear all active and completed tasks from this browser. Make sure you downloaded a JSON backup first if you want to reuse them later.',
+        showInput: false,
+        onConfirm: () => {
+          state.tasks = [];
+          state.stats.completedTodayCount = 0;
+          saveState();
+          renderApp();
+          showToast('Workspace cleared');
+        }
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 10. DRAG & DROP PRIORITY REORDERING
+    // -----------------------------------------------------------------------
+    function handleDragStart(e, id) {
+      draggedTaskId = id;
+      e.currentTarget.classList.add('dragging');
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+    }
+
+    function handleDrop(e, targetId) {
+      e.preventDefault();
+      if (!draggedTaskId || draggedTaskId === targetId) return;
+      const fromIdx = state.tasks.findIndex(t => t.id === draggedTaskId);
+      const toIdx = state.tasks.findIndex(t => t.id === targetId);
+      if (fromIdx === -1 || toIdx === -1) return;
+
+      const [moved] = state.tasks.splice(fromIdx, 1);
+      state.tasks.splice(toIdx, 0, moved);
+      saveState();
+      renderApp();
+    }
+
+    function handleDragEnd(e) {
+      e.currentTarget.classList.remove('dragging');
+      draggedTaskId = null;
+    }
+
+    // -----------------------------------------------------------------------
+    // 11. UI HELPERS (MODALS, DIALOGS, THEME, TOASTS)
+    // -----------------------------------------------------------------------
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+      }
+    }
+
+    function openCustomDialog({ title, message, showInput, placeholder, onConfirm }) {
+      const modal = document.getElementById('customDialogModal');
+      document.getElementById('dialogTitle').textContent = title;
+      document.getElementById('dialogMessage').textContent = message;
+      const input = document.getElementById('dialogInput');
+      if (showInput) {
+        input.value = '';
+        input.placeholder = placeholder || '';
+        input.classList.remove('hidden');
+      } else {
+        input.classList.add('hidden');
+      }
+
+      const confirmBtn = document.getElementById('dialogConfirmBtn');
+      confirmBtn.onclick = () => {
+        const val = input.value;
+        closeModal('customDialogModal');
+        if (onConfirm) onConfirm(val);
+      };
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      if (showInput) input.focus();
+    }
+
+    function toggleTheme() {
+      const next = state.ui.theme === 'dark' ? 'light' : 'dark';
+      state.ui.theme = next;
+      applyTheme(next);
+      saveState();
+    }
+
+    function applyTheme(theme) {
+      const html = document.documentElement;
+      if (theme === 'dark') {
+        html.classList.add('dark');
+      } else {
+        html.classList.remove('dark');
+      }
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto bg-slate-900 dark:bg-slate-800 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg border border-slate-700/80 flex items-center justify-between gap-3 animate-pop-in';
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 220);
+      }, 3000);
+    }
+
+    // Mobile sidebar controls
+    document.getElementById('mobileSidebarBtn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.remove('-translate-x-full');
+      document.getElementById('sidebarBackdrop').classList.remove('hidden');
+    });
+
+    function closeMobileSidebar() {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+      document.getElementById('sidebarBackdrop').classList.add('hidden');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Boot application
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
